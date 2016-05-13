@@ -8,6 +8,8 @@ Code distributed by Google as part of the polymer project is also
 subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
 -->
 <link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../vaadin-upload/vaadin-upload.html">
+<script src="../mock-http-request/lib/mock.js"></script>
 
 <!--
 An element providing a solution to no problem in particular.
@@ -35,13 +37,7 @@ Example:
   </style>
 
   <template>
-    <h1>&lt;wc-spreadsheet&gt;</h1>
-    <content></content>
-    <p class="author">
-      <img src="{{author.image}}">
-      Cheers,<br/>
-      <span class="name">{{author.name}}</span>
-    </p>
+    <vaadin-upload id="upload" max-files="1"></vaadin-upload>
   </template>
 
 </dom-module>
@@ -53,37 +49,6 @@ Example:
     is: 'wc-spreadsheet',
 
     properties: {
-
-      /**
-       * `fancy` indicates that the element should don a monocle and tophat,
-       * while checking its pocket watch.
-       */
-      fancy: Boolean,
-
-      /**
-       * Describes the author of the element, but is really just an excuse to
-       * show off JSDoc annotations.
-       *
-       * @type {{name: string, image: string}}
-       */
-      author: {
-        type: Object,
-        // Use `value` to provides a default value for a property, by setting it
-        // on your element's prototype.
-        //
-        // If you provide a function, as we do here, Polymer will call that
-        // _per element instance_.
-        //
-        // We do that to ensure that each element gets its own copy of the
-        // value, rather than having it shared across all instances (via the
-        // prototype).
-        value: function() {
-          return {
-            name:  'Dimitri Glazkov',
-            image: 'http://addyosmani.com/blog/wp-content/uploads/2013/04/unicorn.jpg',
-          };
-        }
-      },
 
     },
 
@@ -99,6 +64,7 @@ Example:
     },
 
     attached: function() {
+      Object.getPrototypeOf(document.createElement('vaadin-upload'))._createXhr = this._uploadFile;
       // `attached` fires once the element and its parents have been inserted
       // into a document.
       //
@@ -114,6 +80,52 @@ Example:
       // Use this to clean up anything you did in `attached`.
     },
 
+    _uploadFile: function(file) {
+      var xhr = new MockHttpRequest();
+      xhr.upload = {};
+      var ready = false;
+      xhr.onsend = function() {
+        var total = file && file.size ||  1024,
+          done = 0;
+        function start() {
+          setTimeout(progress, 200);
+        }
+        function progress() {
+          xhr.upload.onprogress({
+            total: total,
+            loaded: done
+          });
+          if (!ready) {
+            setTimeout(progress, 200);
+            done = Math.min(total, done + 1016000);
+          } else if (!file.abort) {
+            if (done < total) {
+              done = total;
+              setTimeout(progress, 200);
+            } else {
+              setTimeout(finish, 200);
+            }
+          }
+        }
+        function finish() {
+          xhr.receive(200, '{"message":"OK"}');
+        }
+        start();
+      };
+      var reader = new FileReader();
+      var self = this.parentNode;
+      reader.onload = (function(f) {
+        return function(e) {
+          ready = true;
+          self.$.upload.hidden = true;
+          var data = e.target.result;
+          //TODO Do some XLSX.read with the data
+        };
+      })(file);
+      reader.readAsDataURL(file);
+      return xhr;
+    }
+
     // Element Behavior
 
     /**
@@ -122,27 +134,6 @@ Example:
      * @event wc-spreadsheet-lasers
      * @detail {{sound: String}}
      */
-
-    /**
-     * Sometimes it's just nice to say hi.
-     *
-     * @param {string} greeting A positive greeting.
-     * @return {string} The full greeting.
-     */
-    sayHello: function(greeting) {
-      var response = greeting || 'Hello World!';
-      return 'wc-spreadsheet says, ' + response;
-    },
-
-    /**
-     * Attempts to destroy this element's enemies with an any beam of light!
-     *
-     * Or, at least, dispatches an event in the vain hope that someone else will
-     * do the zapping.
-     */
-    fireLasers: function() {
-      this.fire('wc-spreadsheet-lasers', {sound: 'Pew pew!'});
-    }
 
   });
 

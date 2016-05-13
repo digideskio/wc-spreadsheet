@@ -2,7 +2,7 @@
   "name": "wc-spreadsheet",
   "version": "1.0.0",
   "authors": [
-    "Guillermo Alvarez <guillermo@vaadin.com>"
+    "Guillermo Alvarez <guillermo@vaadin.com>",
     "Sami Suo-Heikki <samiheikki@vaadin.com>"
   ],
   "description": "An element providing a solution to no problem in particular.",
@@ -21,7 +21,9 @@
     "/demo/"
   ],
   "dependencies": {
-    "polymer": "Polymer/polymer#^1.0.0"
+    "polymer": "Polymer/polymer#^1.0.0",
+    "vaadin-upload": "^1.0.0",
+    "mock-http-request": "philikon/MockHttpRequest#master"
   },
   "devDependencies": {
     "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
