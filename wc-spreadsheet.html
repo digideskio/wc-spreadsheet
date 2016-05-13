@@ -8,8 +8,8 @@ Code distributed by Google as part of the polymer project is also
 subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
 -->
 <link rel="import" href="../polymer/polymer.html">
-<link rel="import" href="../vaadin-upload/vaadin-upload.html">
 <script src="../mock-http-request/lib/mock.js"></script>
+<script src="../js-xlsx/dist/xlsx.js"></script>
 
 <!--
 An element providing a solution to no problem in particular.
@@ -22,119 +22,86 @@ Example:
 -->
 <dom-module id="wc-spreadsheet">
 
-  <style>
-    :host {
-      display: block;
-      box-sizing: border-box;
-    }
+    <style>
 
-    .author img {
-      float: left;
-      margin-right: 5px;
-      max-height: 100px;
-      max-width: 100px;
-    }
-  </style>
+        .hover {
+            opacity: .7;
+            border: 1px dashed #111;
+        }
+    </style>
 
-  <template>
-    <vaadin-upload id="upload" max-files="1"></vaadin-upload>
-  </template>
+    <template>
+        <div id="DropZone" style="height: 100px; width: 100%; border: 1px solid #111;">
+            DROP HERE
+        </div>
+        <div id="DataZone"></div>
+    </template>
 
 </dom-module>
 
 <script>
 
-  Polymer({
+    Polymer({
 
-    is: 'wc-spreadsheet',
+        is: 'wc-spreadsheet',
 
-    properties: {
+        properties: {},
 
-    },
+        // Element Lifecycle
 
-    // Element Lifecycle
+        ready: function () {
+            this.setupDrop();
 
-    ready: function() {
-      // `ready` is called after all elements have been configured, but
-      // propagates bottom-up. This element's children are ready, but parents
-      // are not.
-      //
-      // This is the point where you should make modifications to the DOM (when
-      // necessary), or kick off any processes the element wants to perform.
-    },
+        },
 
-    attached: function() {
-      Object.getPrototypeOf(document.createElement('vaadin-upload'))._createXhr = this._uploadFile;
-      // `attached` fires once the element and its parents have been inserted
-      // into a document.
-      //
-      // This is a good place to perform any work related to your element's
-      // visual state or active behavior (measuring sizes, beginning animations,
-      // loading resources, etc).
-    },
+        attached: function () {
 
-    detached: function() {
-      // The analog to `attached`, `detached` fires when the element has been
-      // removed from a document.
-      //
-      // Use this to clean up anything you did in `attached`.
-    },
+        },
 
-    _uploadFile: function(file) {
-      var xhr = new MockHttpRequest();
-      xhr.upload = {};
-      var ready = false;
-      xhr.onsend = function() {
-        var total = file && file.size ||  1024,
-          done = 0;
-        function start() {
-          setTimeout(progress, 200);
+        detached: function () {
+        },
+
+        setupDrop: function () {
+            var dropZone = this.$.DropZone;
+
+            dropZone.ondragover = function (e) {
+                e.stopPropagation();
+                this.toggleClass("hover", true, dropZone);
+                return false;
+            }.bind(this);
+            dropZone.ondragleave = function () {
+                this.toggleClass("hover", false, dropZone);
+                return false;
+            }.bind(this);
+            dropZone.ondrop = function (e) {
+                console.log('ondrop');
+                this.toggleClass("hover", false, dropZone);
+                e.stopPropagation();
+                e.preventDefault();
+                var files = e.dataTransfer.files;
+                var i, f;
+                for (i = 0, f = files[i]; i != files.length; ++i) {
+                    var reader = new FileReader();
+                    var name = f.name;
+                    reader.onload = function (e) {
+
+                        if (name.indexOf(".xls") != -1) {
+                            var data = e.target.result;
+                            this.loadBinaryData(data);
+                        }
+                    }.bind(this);
+                    reader.readAsBinaryString(f);
+                }
+            }.bind(this);
+        },
+
+        loadBinaryData: function (data) {
+            /* if binary string, read with type 'binary' */
+            var workbook = XLSX.read(data, {type: 'binary'});
+            console.log(workbook);
+            console.log(workbook.SheetNames);
         }
-        function progress() {
-          xhr.upload.onprogress({
-            total: total,
-            loaded: done
-          });
-          if (!ready) {
-            setTimeout(progress, 200);
-            done = Math.min(total, done + 1016000);
-          } else if (!file.abort) {
-            if (done < total) {
-              done = total;
-              setTimeout(progress, 200);
-            } else {
-              setTimeout(finish, 200);
-            }
-          }
-        }
-        function finish() {
-          xhr.receive(200, '{"message":"OK"}');
-        }
-        start();
-      };
-      var reader = new FileReader();
-      var self = this.parentNode;
-      reader.onload = (function(f) {
-        return function(e) {
-          ready = true;
-          self.$.upload.hidden = true;
-          var data = e.target.result;
-          //TODO Do some XLSX.read with the data
-        };
-      })(file);
-      reader.readAsDataURL(file);
-      return xhr;
-    }
 
-    // Element Behavior
-
-    /**
-     * The `wc-spreadsheet-lasers` event is fired whenever `fireLasers` is called.
-     *
-     * @event wc-spreadsheet-lasers
-     * @detail {{sound: String}}
-     */
-
-  });
+    });
 
 </script>
